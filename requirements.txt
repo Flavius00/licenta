@@ -1,0 +1,10 @@
+torch>=2.0
+numpy
+pandas
+SimpleITK
+scikit-learn
+scikit-image
+scipy
+matplotlib
+pyvista
+tqdm
