@@ -1,18 +1,3 @@
-"""End-to-end nodule detection on a CT scan.
-
-Pipeline:  CT volume -> lung segmentation -> classical candidate generation
-(threshold + morphology + watershed) -> 2D CNN scores every candidate ->
-detections above the probability threshold are reported.
-
-For every detection the script returns / saves:
-  * world coordinates [x, y, z] in mm and voxel coordinates,
-  * the axial slice index where the nodule center lies,
-  * the bounding box of the nodule (from the segmented blob),
-  * volume (mm^3) and equivalent diameter (mm),
-  * the CNN probability,
-  * a PNG of the FULL axial slice (whole lung field visible) taken at the
-    nodule's center slice, with the bounding box drawn around the nodule.
-"""
 import argparse
 
 import matplotlib
@@ -40,7 +25,6 @@ def load_model(checkpoint_path, device):
 
 def score_candidates(model, volume, spacing, candidates, device,
                      batch_size=256):
-    """Run the CNN on a 2D patch around every candidate center."""
     patches, valid = [], []
     for i, cand in enumerate(candidates):
         voxel_xyz = cand["centroid_voxel"][::-1]  # (z,y,x) -> (x,y,z)
@@ -96,7 +80,6 @@ def save_detection_slice(volume, detection, out_path, ground_truth=None):
 
 
 def ground_truth_table(uid, origin, spacing):
-    """Annotation rows for this scan converted to voxel space (for overlay)."""
     ann = pd.read_csv(config.ANNOTATIONS_CSV)
     ann = ann[ann["seriesuid"] == uid].copy()
     if not len(ann):

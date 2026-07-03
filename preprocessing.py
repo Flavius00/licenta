@@ -1,26 +1,3 @@
-"""LUNA16 preprocessing: break every CT scan into 2D axial slice patches.
-
-Instead of saving each CT volume as a single big .npy file 
- , every scan is decomposed into small 2D patches:
-
-  * one 64x64 patch per candidate location from candidates_V2.csv,
-  * each patch covers a fixed 50x50 mm physical area (spacing aware), so
-    patches are comparable across scans with different voxel spacings,
-  * positive candidates additionally contribute the neighbouring axial
-    slices (z-1, z, z+1) to multiply the rare positive class,
-  * negatives are subsampled per scan for train/val; the test subset keeps
-    all negatives so the final evaluation is realistic.
-
-Patches are normalised (HU clipped to [-1000, 400] then scaled to [0, 1]),
-stored as one stacked float16 array per subset
-(`patches/subset{i}_patches.npy`, shape [N, 64, 64]) plus a global
-`patches/index.csv` with one row per patch:
-
-    subset, idx, label, seriesuid
-
-Run with:
-    python preprocessing.py
-"""
 import numpy as np
 import pandas as pd
 import SimpleITK as sitk
@@ -44,8 +21,7 @@ def find_scans(data_dir):
 
 
 def load_volume(mhd_path):
-    """Read a MetaImage volume.
-
+    """
     Returns:
         volume:  ndarray (Z, Y, X) of HU values
         origin:  ndarray (x, y, z) in mm
@@ -59,20 +35,10 @@ def load_volume(mhd_path):
 
 
 def world_to_voxel(coord_xyz, origin, spacing):
-    """Convert world (mm) coordinates to continuous voxel indices (x, y, z)."""
     return (np.asarray(coord_xyz, dtype=np.float64) - origin) / spacing
 
 
 def extract_patch(volume, spacing, voxel_xyz, z_offset=0):
-    """Extract one axial patch around a candidate location.
-
-    The patch covers PATCH_SIZE_MM x PATCH_SIZE_MM in physical space and is
-    resampled to PATCH_SIZE_PX x PATCH_SIZE_PX pixels.  Out-of-bounds regions
-    are padded with air (HU_MIN).
-
-    Returns a float16 array of shape (PATCH_SIZE_PX, PATCH_SIZE_PX) with
-    values in [0, 1], or None if the requested slice is outside the volume.
-    """
     num_z = volume.shape[0]
     z_idx = int(round(voxel_xyz[2])) + z_offset
     if z_idx < 0 or z_idx >= num_z:
@@ -110,11 +76,6 @@ def extract_patch(volume, spacing, voxel_xyz, z_offset=0):
 
 
 def select_candidates(scan_cands, subset_idx, rng):
-    """Pick which candidates of one scan to extract.
-
-    All positives are kept; negatives are subsampled for train/val subsets.
-    Returns a DataFrame.
-    """
     pos = scan_cands[scan_cands["class"] == 1]
     neg = scan_cands[scan_cands["class"] == 0]
     if subset_idx not in config.KEEP_ALL_NEG_SUBSETS and len(neg) > config.MAX_NEG_PER_SCAN:

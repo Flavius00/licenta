@@ -1,16 +1,3 @@
-"""Train the 2D CNN nodule classifier.
-
-Usage:
-    python train.py [--epochs N] [--batch-size N] [--lr F] [--resume]
-
-Training recipe:
-  * subsets 0-7 train / subset 8 validation (split by scan, no leakage),
-  * WeightedRandomSampler -> roughly class-balanced batches,
-  * BCEWithLogits loss, AdamW, cosine LR schedule, mixed precision,
-  * early stopping + best-checkpoint selection on validation AUC.
-
-
-"""
 import argparse
 import csv
 import random

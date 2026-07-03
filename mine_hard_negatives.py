@@ -1,21 +1,3 @@
-"""Hard-negative mining for false-positive reduction.
-
-Runs the REAL detection candidate generator (lung segmentation + watershed)
-over the scans, extracts a 2D patch around every candidate, labels it against
-annotations.csv, then:
-
-  * for train/val subsets (0-8): keeps every positive plus the NEGATIVES that
-    the current model (checkpoints/best.pt) scores >= MINE_HARD_PROB — i.e. the
-    false positives the pipeline actually produces and the model is fooled by.
-  * for the test subset (9): keeps ALL candidates, so it can serve as a clean
-    "real pipeline" evaluation set.
-
-Candidate generation is CPU-bound, so scans are processed in parallel
-processes; the (GPU) hard-negative scoring happens in the main process.
-Processing is per-subset and resumable: a subset whose .npy already exists is
-skipped.
-
-"""
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -35,11 +17,6 @@ EMPTY = np.zeros((0, config.PATCH_SIZE_PX, config.PATCH_SIZE_PX), np.float16)
 
 
 def process_scan(uid, mhd_path, max_neg):
-    """Worker: generate candidates for one scan and return their patches.
-
-    Negatives are randomly subsampled to `max_neg` (None = keep all).
-    Returns (uid, patches[N,H,W] float16, labels[N] int).
-    """
     annotations = pd.read_csv(config.ANNOTATIONS_CSV)
     annotations = annotations[annotations["seriesuid"] == uid]
 
@@ -76,7 +53,6 @@ def process_scan(uid, mhd_path, max_neg):
 
 
 def score_patches(model, device, patches):
-    """Current-model probability for each patch (for hard selection)."""
     probs = np.empty(len(patches), dtype=np.float32)
     for start in range(0, len(patches), 512):
         batch = torch.from_numpy(

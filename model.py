@@ -5,7 +5,6 @@ import config
 
 
 class BasicBlock(nn.Module):
-    """Standard residual block: conv3x3-BN-ReLU-conv3x3-BN + skip."""
 
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()

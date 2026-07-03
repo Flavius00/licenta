@@ -7,16 +7,6 @@ import config
 
 
 class LunaPatchDataset(Dataset):
-    """2D patch dataset.
-
-    Args:
-        subsets:          LUNA16 subset indices to include.
-        augment:          random flips / rotations / intensity jitter (train).
-        include_cand:     include the candidates_V2 source at all.
-        include_cand_neg: within the candidates_V2 source, include negatives
-                          (positives are always kept when include_cand=True).
-        include_hard_neg: include the mined hard-negative source.
-    """
 
     def __init__(self, subsets, augment=False, include_cand=True,
                  include_cand_neg=True, include_hard_neg=False):
@@ -86,12 +76,6 @@ class LunaPatchDataset(Dataset):
 
 
 def make_balanced_sampler(dataset, hard_neg_weight=1.0):
-    """WeightedRandomSampler giving each batch ~balanced classes.
-
-    `hard_neg_weight` > 1 additionally over-samples mined hard negatives
-    relative to the easy candidates_V2 negatives, focusing training on the
-    false positives that matter.
-    """
     neg, pos = dataset.class_counts()
     base = {0: 1.0 / max(neg, 1), 1: 1.0 / max(pos, 1)}
     weights = np.array([base[int(l)] for l in dataset.labels], dtype=np.float64)

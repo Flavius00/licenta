@@ -1,30 +1,9 @@
-"""Nodule candidate generation based on shape and intensity (thesis objective 2).
-
-Classical pipeline applied inside the segmented lung field:
-
-  1. intensity threshold: nodules/vessels are denser than lung parenchyma,
-  2. morphological opening (spacing-aware) to break thin vessel connections,
-  3. Euclidean distance transform (in mm) + watershed with the distance
-     peaks as markers -> separates nodules that touch vessels or the pleura,
-  4. connected-component analysis: each blob becomes one candidate with
-     position, bounding box, volume and shape/intensity features,
-  5. size/shape filtering (nodules are 3-30 mm and roughly spherical).
-
-Every candidate is a dict with:
-    centroid_voxel (z, y, x), centroid_world (x, y, z) mm, slice z index,
-    bbox (zlo, ylo, xlo, zhi, yhi, xhi), volume_mm3, equiv_diameter_mm,
-    plus the feature vector used by the SVM / k-NN classifiers.
-"""
 import numpy as np
 from scipy import ndimage as ndi
 from skimage import measure, morphology
 from skimage.feature import peak_local_max
 from skimage.segmentation import watershed
 
-# Two threshold passes: -500 HU isolates solid nodules; -650 HU captures
-# subsolid/ground-glass nodules (which never exceed ~-300 HU).  A single
-# threshold cannot do both: too low and solid nodules merge with adjacent
-# vessels into elongated blobs that the shape filter rejects.
 DENSITY_THRESHOLDS_HU = (-500.0, -650.0)
 MERGE_DISTANCE_MM = 5.0       # candidates closer than this are duplicates
 OPENING_RADIUS_MM = 1.0       # breaks thin vessel bridges (in-plane only:
@@ -45,20 +24,6 @@ FEATURE_NAMES = [
 
 
 def generate_candidates(volume, spacing, lung_mask):
-    """Detect nodule candidates inside the lung mask.
-
-    Runs the blob pipeline once per density threshold (solid + subsolid
-    pass) and merges the results, dropping duplicates closer than
-    MERGE_DISTANCE_MM (the higher-threshold pass wins).
-
-    Args:
-        volume:    ndarray (Z, Y, X) in HU.
-        spacing:   ndarray (x, y, z) mm/voxel.
-        lung_mask: boolean ndarray (Z, Y, X).
-
-    Returns:
-        list of candidate dicts (see module docstring).
-    """
     spacing_zyx = spacing[::-1]
     merged, kept_positions = [], []
     for threshold in DENSITY_THRESHOLDS_HU:
